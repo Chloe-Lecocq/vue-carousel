@@ -918,11 +918,6 @@ export default {
     );
 
     this.$emit("mounted");
-
-    // when autoplay direction is backward start from the last slide
-    if (this.autoplayDirection === "backward") {
-      this.goToLastSlide();
-    }
   },
   beforeDestroy() {
     this.detachMutationObserver();
