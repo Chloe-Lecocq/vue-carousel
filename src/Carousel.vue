@@ -506,8 +506,8 @@ export default {
       if (direction && direction === "backward" && this.canAdvanceBackward) {
         this.goToPage(this.getPreviousPage(), "navigation");
       } else if (
-              (!direction || (direction && direction !== "backward")) &&
-              this.canAdvanceForward
+        (!direction || (direction && direction !== "backward")) &&
+        this.canAdvanceForward
       ) {
         this.goToPage(this.getNextPage(), "navigation");
       }
@@ -525,9 +525,48 @@ export default {
         this.goToPage(this.pageCount);
       });
     },
+    /**
+     * A mutation observer is used to detect changes to the containing node
+     * in order to keep the magnet container in sync with the height its reference node.
+     */
+    attachMutationObserver() {
+      const MutationObserver =
+        window.MutationObserver ||
+        window.WebKitMutationObserver ||
+        window.MozMutationObserver;
 
+      if (MutationObserver) {
+        let config = {
+          attributes: true,
+          data: true
+        };
+        if (this.adjustableHeight) {
+          config = {
+            ...config,
+            childList: true,
+            subtree: true,
+            characterData: true
+          };
+        }
+        this.mutationObserver = new MutationObserver(() => {
+          this.$nextTick(() => {
+            this.computeCarouselWidth();
+            this.computeCarouselHeight();
+          });
+        });
+        if (this.$parent.$el) {
+          let carouselInnerElements = this.$el.getElementsByClassName(
+            "VueCarousel-inner"
+          );
+          for (let i = 0; i < carouselInnerElements.length; i++) {
+            this.mutationObserver.observe(carouselInnerElements[i], config);
+          }
+        }
+      }
+    },
     handleNavigation(direction) {
       this.advancePage(direction);
+      this.pauseAutoplay();
       this.$emit("navigation-click", direction);
     },
     /**
@@ -552,7 +591,7 @@ export default {
      */
     getCarouselWidth() {
       let carouselInnerElements = this.$el.getElementsByClassName(
-              "VueCarousel-inner"
+        "VueCarousel-inner"
       );
       for (let i = 0; i < carouselInnerElements.length; i++) {
         if (carouselInnerElements[i].clientWidth > 0) {
@@ -572,15 +611,15 @@ export default {
 
       const slideOffset = this.currentPerPage * (this.currentPage + 1) - 1;
       const maxSlideHeight = [...Array(this.currentPerPage)]
-              .map((_, idx) => this.getSlide(slideOffset + idx))
-              .reduce(
-                      (clientHeight, slide) =>
-                              Math.max(clientHeight, (slide && slide.$el.clientHeight) || 0),
-                      0
-              );
+        .map((_, idx) => this.getSlide(slideOffset + idx))
+        .reduce(
+          (clientHeight, slide) =>
+            Math.max(clientHeight, (slide && slide.$el.clientHeight) || 0),
+          0
+        );
 
       this.currentHeight =
-              maxSlideHeight === 0 ? "auto" : `${maxSlideHeight}px`;
+        maxSlideHeight === 0 ? "auto" : `${maxSlideHeight}px`;
 
       return this.currentHeight;
     },
@@ -590,14 +629,14 @@ export default {
      */
     getSlideCount() {
       this.slideCount =
-              (this.$slots &&
-                      this.$slots.default &&
-                      this.$slots.default.filter(
-                              slot =>
-                                      slot.tag &&
-                                      slot.tag.match(`^vue-component-\\d+-${this.tagName}$`) !== null
-                      ).length) ||
-              0;
+        (this.$slots &&
+          this.$slots.default &&
+          this.$slots.default.filter(
+            slot =>
+              slot.tag &&
+              slot.tag.match(`^vue-component-\\d+-${this.tagName}$`) !== null
+          ).length) ||
+        0;
     },
     /**
      * Gets the slide at the specified index
@@ -605,9 +644,9 @@ export default {
      */
     getSlide(index) {
       const slides = this.$children.filter(
-              child =>
-                      child.$vnode.tag.match(`^vue-component-\\d+-${this.tagName}$`) !==
-                      null
+        child =>
+          child.$vnode.tag.match(`^vue-component-\\d+-${this.tagName}$`) !==
+          null
       );
       return slides[index];
     },
@@ -621,11 +660,11 @@ export default {
     goToPage(page, advanceType) {
       if (page >= 0 && page <= this.pageCount) {
         this.offset = this.scrollPerPage
-                ? Math.min(
-                        this.slideWidth * this.currentPerPage * page,
-                        this.maxOffset
-                )
-                : this.slideWidth * page;
+          ? Math.min(
+              this.slideWidth * this.currentPerPage * page,
+              this.maxOffset
+            )
+          : this.slideWidth * page;
 
         // update the current page
         this.currentPage = page;
@@ -649,15 +688,15 @@ export default {
       }
 
       document.addEventListener(
-              this.isTouch ? "touchend" : "mouseup",
-              this.onEnd,
-              true
+        this.isTouch ? "touchend" : "mouseup",
+        this.onEnd,
+        true
       );
 
       document.addEventListener(
-              this.isTouch ? "touchmove" : "mousemove",
-              this.onDrag,
-              true
+        this.isTouch ? "touchmove" : "mousemove",
+        this.onDrag,
+        true
       );
 
       this.startTime = e.timeStamp;
@@ -671,6 +710,126 @@ export default {
      */
 
     onEnd(e) {
+
+      // compute the momemtum speed
+      const eventPosX = this.isTouch ? e.changedTouches[0].clientX : e.clientX;
+      const deltaX = this.dragStartX - eventPosX;
+      this.dragMomentum = deltaX / (e.timeStamp - this.startTime);
+
+      // take care of the minSwipteDistance prop, if not 0 and delta is bigger than delta
+      if (
+        this.minSwipeDistance !== 0 &&
+        Math.abs(deltaX) >= this.minSwipeDistance
+      ) {
+        const width = this.scrollPerPage
+          ? this.slideWidth * this.currentPerPage
+          : this.slideWidth;
+        this.dragOffset = this.dragOffset + Math.sign(deltaX) * (width / 2);
+      }
+
+      if (this.rtl) {
+        this.offset -= this.dragOffset;
+      } else {
+        this.offset += this.dragOffset;
+      }
+      this.dragOffset = 0;
+      this.dragging = false;
+
+      this.render();
+
+      // clear events listeners
+      document.removeEventListener(
+        this.isTouch ? "touchend" : "mouseup",
+        this.onEnd,
+        true
+      );
+      document.removeEventListener(
+        this.isTouch ? "touchmove" : "mousemove",
+        this.onDrag,
+        true
+      );
+    },
+    /**
+     * Trigger actions when mouse is pressed and then moved (mouse drag)
+     * @param  {Object} e The event object
+     */
+    onDrag(e) {
+      const eventPosX = this.isTouch ? e.touches[0].clientX : e.clientX;
+      const eventPosY = this.isTouch ? e.touches[0].clientY : e.clientY;
+      const newOffsetX = this.dragStartX - eventPosX;
+      const newOffsetY = this.dragStartY - eventPosY;
+
+      // if it is a touch device, check if we are below the min swipe threshold
+      // (if user scroll the page on the component)
+      if (this.isTouch && Math.abs(newOffsetX) < Math.abs(newOffsetY)) {
+        return;
+      }
+
+      e.stopImmediatePropagation();
+
+      this.dragOffset = newOffsetX;
+      const nextOffset = this.offset + this.dragOffset;
+
+      if (this.rtl) {
+        if (this.offset == 0 && this.dragOffset > 0) {
+          this.dragOffset = Math.sqrt(this.resistanceCoef * this.dragOffset);
+        } else if (this.offset == this.maxOffset && this.dragOffset < 0) {
+          this.dragOffset = -Math.sqrt(-this.resistanceCoef * this.dragOffset);
+        }
+      } else {
+        if (nextOffset < 0) {
+          this.dragOffset = -Math.sqrt(-this.resistanceCoef * this.dragOffset);
+        } else if (nextOffset > this.maxOffset) {
+          this.dragOffset = Math.sqrt(this.resistanceCoef * this.dragOffset);
+        }
+      }
+    },
+    onResize() {
+      this.computeCarouselWidth();
+      this.computeCarouselHeight();
+
+      this.dragging = true; // force a dragging to disable animation
+      this.render();
+      // clear dragging after refresh rate
+      setTimeout(() => {
+        this.dragging = false;
+      }, this.refreshRate);
+    },
+    render() {
+      // add extra slides depending on the momemtum speed
+      if (this.rtl) {
+        this.offset -=
+          Math.max(
+            -this.currentPerPage + 1,
+            Math.min(Math.round(this.dragMomentum), this.currentPerPage - 1)
+          ) * this.slideWidth;
+      } else {
+        this.offset +=
+          Math.max(
+            -this.currentPerPage + 1,
+            Math.min(Math.round(this.dragMomentum), this.currentPerPage - 1)
+          ) * this.slideWidth;
+      }
+
+      // & snap the new offset on a slide or page if scrollPerPage
+      const width = this.scrollPerPage
+        ? this.slideWidth * this.currentPerPage
+        : this.slideWidth;
+
+      // lock offset to either the nearest page, or to the last slide
+      const lastFullPageOffset =
+         this.offset + width * Math.floor(this.slideCount / (this.currentPerPage - 1));
+      const remainderOffset =
+        lastFullPageOffset +
+        this.slideWidth * (this.slideCount % this.currentPerPage);
+      if (this.offset > (lastFullPageOffset + remainderOffset) / 2) {
+        this.offset = remainderOffset;
+      } else {
+        this.offset = width * Math.round(this.offset / width);
+      }
+
+      // clamp the offset between 0 -> maxOffset
+      this.offset = Math.max(0, Math.min(this.offset, this.maxOffset));
 
     },
     /**
