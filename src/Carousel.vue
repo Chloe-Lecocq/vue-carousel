@@ -761,9 +761,7 @@ export default {
 
       // if it is a touch device, check if we are below the min swipe threshold
       // (if user scroll the page on the component)
-      if (this.isTouch && Math.abs(newOffsetX) < Math.abs(newOffsetY)) {
-        return;
-      }
+
 
       e.stopImmediatePropagation();
 
