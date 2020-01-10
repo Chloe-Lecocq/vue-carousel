@@ -666,10 +666,16 @@ export default {
             )
           : this.slideWidth * page;
 
+        // restart autoplay if specified
+        if (this.autoplay && !this.autoplayHoverPause) {
+          this.restartAutoplay();
+        }
+
         // update the current page
         this.currentPage = page;
 
         if (advanceType === "pagination") {
+          this.pauseAutoplay();
           this.$emit("pagination-click", page);
         }
       }
@@ -710,6 +716,11 @@ export default {
      */
 
     onEnd(e) {
+      // restart autoplay if specified
+      if (this.autoplay && !this.autoplayHoverPause) {
+        this.restartAutoplay();
+      }
+      this.pauseAutoplay();
 
       // compute the momemtum speed
       const eventPosX = this.isTouch ? e.changedTouches[0].clientX : e.clientX;
@@ -884,6 +895,7 @@ export default {
       );
     }
 
+    this.attachMutationObserver();
     this.computeCarouselWidth();
     this.computeCarouselHeight();
 
