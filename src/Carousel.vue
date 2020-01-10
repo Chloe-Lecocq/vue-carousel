@@ -349,12 +349,6 @@ export default {
     }
   },
   watch: {
-    value(val) {
-      if (val !== this.currentPage) {
-        this.goToPage(val);
-        this.render();
-      }
-    },
     currentPage(val) {
       this.$emit("pageChange", val);
       this.$emit("page-change", val);
