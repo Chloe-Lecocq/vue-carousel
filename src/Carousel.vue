@@ -354,13 +354,6 @@ export default {
       this.$emit("page-change", val);
       this.$emit("input", val);
     },
-    autoplay(val) {
-      if (val === false) {
-        this.pauseAutoplay();
-      } else {
-        this.restartAutoplay();
-      }
-    }
   },
   computed: {
     /**
