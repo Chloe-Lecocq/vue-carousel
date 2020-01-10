@@ -761,9 +761,7 @@ export default {
 
       // if it is a touch device, check if we are below the min swipe threshold
       // (if user scroll the page on the component)
-      if (this.isTouch && Math.abs(newOffsetX) < Math.abs(newOffsetY)) {
-        return;
-      }
+
 
       e.stopImmediatePropagation();
 
@@ -831,6 +829,10 @@ export default {
       // clamp the offset between 0 -> maxOffset
       this.offset = Math.max(0, Math.min(this.offset, this.maxOffset));
 
+      // update the current page
+      this.currentPage = this.scrollPerPage
+        ? Math.round(this.offset / this.slideWidth / this.currentPerPage)
+        : Math.round(this.offset / this.slideWidth);
     },
     /**
      * Re-compute the width of the carousel and its slides
