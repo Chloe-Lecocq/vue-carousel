@@ -473,9 +473,6 @@ export default {
      * @return {Number} Number of pages
      */
     pageCount() {
-      console.log(this.slideCount - this.currentPerPage + 1);
-      console.log(this.slideCount);
-      console.log(this.currentPerPage);
       return this.scrollPerPage
         ? Math.ceil(this.slideCount / this.currentPerPage)
         : this.slideCount - this.currentPerPage + 1;
