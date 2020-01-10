@@ -366,10 +366,7 @@ export default {
               this.dragging = false;
             }, this.refreshRate);
           }
-
-          this.$nextTick(() => {
             this.goToPage(val[0]);
-          });
         } else {
           this.$nextTick(() => {
             this.goToPage(val);
