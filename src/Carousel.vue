@@ -353,7 +353,7 @@ export default {
       }
     },
     navigateTo: {
-      immediate: true,
+
       handler(val) {
         // checking if val is an array, for arrays typeof returns object
         if (typeof val === "object") {
@@ -366,7 +366,10 @@ export default {
               this.dragging = false;
             }, this.refreshRate);
           }
+
+          this.$nextTick(() => {
             this.goToPage(val[0]);
+          });
         } else {
           this.$nextTick(() => {
             this.goToPage(val);
